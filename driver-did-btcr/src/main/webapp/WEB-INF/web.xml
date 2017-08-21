@@ -11,17 +11,23 @@
 	<servlet>
 		<display-name>DriverServlet</display-name>
 		<servlet-name>DriverServlet</servlet-name>
-		<servlet-class>uniresolver.driver.DriverServlet</servlet-class>
+		<servlet-class>org.springframework.web.context.support.HttpRequestHandlerServlet</servlet-class>
 		<init-param>
 			<param-name>Driver</param-name>
 			<param-value>uniresolver.driver.did.btcr.DidBtcrDriver</param-value>
 		</init-param>
-		<init-on-load>1</init-on-load>
+		<load-on-startup>1</load-on-startup>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>DriverServlet</servlet-name>
 		<url-pattern></url-pattern>
-		<url-pattern>/*</url-pattern>
+		<url-pattern>/1.0/dids/*</url-pattern>
 	</servlet-mapping>
+
+	<!-- LISTENERS -->
+
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
 
 </web-app>
