@@ -19,4 +19,4 @@ jobs:
         DOCKER_USERNAME: ${{secrets.DOCKER_USERNAME}}
         DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
         DOCKER_FILE: docker/Dockerfile
-        CONTAINER_TAG: phil21/driver-did-btcr:latest
+        CONTAINER_TAG: universalresolver/driver-did-btcr:latest
