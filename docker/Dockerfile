@@ -6,10 +6,10 @@ MAINTAINER Markus Sabadello <markus@danubetech.com>
 # build dependencies
 
 RUN cd /opt/ && git clone https://github.com/dcdpr/libbech32-java.git && \
-    cd /opt/libbech32-java/ && mvn clean install -DskipTests && mvn clean
+    cd /opt/libbech32-java/ && git checkout f797ae056f25108581a52bd39bf8cce2987ddb75 && mvn clean install -DskipTests && mvn clean
 
 RUN cd /opt/ && git clone https://github.com/dcdpr/libtxref-java.git && \
-    cd /opt/libtxref-java/ && mvn clean install -DskipTests && mvn clean
+    cd /opt/libtxref-java/ && git checkout 9407e7b802fa5fba19182bcf8646e6a3faea7e84 && mvn clean install -DskipTests && mvn clean
 
 RUN cd /opt/ && git clone https://github.com/WebOfTrustInfo/btc-tx-lookup-java.git && \
     cd /opt/btc-tx-lookup-java/ && mvn clean install -DskipTests && mvn clean
