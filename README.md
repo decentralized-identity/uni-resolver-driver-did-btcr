@@ -9,33 +9,29 @@ This is a [Universal Resolver](https://github.com/decentralized-identity/univers
 * [Decentralized Identifiers](https://w3c.github.io/did-core/)
 * [DID Method Specification](https://w3c-ccg.github.io/didm-btcr)
 
+
 ## Example DIDs
 
 ```
-did:btcr:xz35-jznz-q6mr-7q6
-did:btcr:xkrn-xz7q-q0mx-4cl
-did:btcr:x705-jznz-qwvq-0uw
+ did:btcr:xz35-jznz-q9yu-ply
+ did:btcr:xkrn-xz7q-qsye-28p
+ did:btcr:x705-jznz-q3nl-srs
 ```
+## Configuration
+ For downloading the dependencies of this project a Personal Access Token for GitHub must be configured in file [settings.xml](https://github.com/decentralized-identity/uni-resolver-driver-did-btcr/blob/master/settings.xml) according to [Creating a personal access token for the command line](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line).
 
 ## Build and Run (Docker)
 
 ```
 docker build -f ./docker/Dockerfile . -t universalresolver/driver-did-btcr
 docker run -p 8080:8080 universalresolver/driver-did-btcr
-curl -X GET http://localhost:8080/1.0/identifiers/did:btcr:xz35-jznz-q6mr-7q6
+curl -X GET http://localhost:8080/1.0/identifiers/did:btcr:xz35-jznz-q9yu-ply
 ```
 
 ## Build (native Java)
 
- 1. First, build https://github.com/decentralized-identity/universal-resolver/tree/master/resolver/java
- 1. Then, build https://github.com/dcdpr/libbech32-java
- 1. Then, build https://github.com/dcdpr/libtxref-java
- 1. Then, build https://github.com/WebOfTrustInfo/btc-tx-lookup-java
-
-Then run:
-
-	mvn clean install
-
+	mvn --settings settings.xml clean install
+	
 ## Driver Environment Variables
 
 The driver recognizes the following environment variables:

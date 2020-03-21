@@ -1,0 +1,48 @@
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                      http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <activeProfiles>
+    <activeProfile>github</activeProfile>
+  </activeProfiles>
+  <profiles>
+    <profile>
+      <id>github</id>
+      <repositories>
+        <repository>
+          <id>github-ur</id>
+          <name>GitHub decentralized-identity uni-resolver</name>
+          <url>https://maven.pkg.github.com/decentralized-identity/universal-resolver</url>
+        </repository>
+        <repository>
+          <id>github-btcr</id>
+          <name>GitHub WebOfTrustInfo btc-tx-lookup-java</name>
+          <url>https://maven.pkg.github.com/WebOfTrustInfo/btc-tx-lookup-java</url>
+        </repository>
+        <repository>
+          <id>github-btclookup</id>
+          <name>GitHub WebOfTrustInfo btc-tx-lookup-java</name>
+          <url>https://maven.pkg.github.com/WebOfTrustInfo/btc-tx-lookup-java</url>
+        </repository>
+      </repositories>
+    </profile>
+  </profiles>
+  <servers>
+    <server>
+      <id>github-ur</id>
+      <username>OWNER</username>
+      <password>TOKEN</password>
+    </server>
+    <server>
+      <id>github-btclookup</id>
+      <username>OWNER</username>
+      <password>TOKEN</password>
+    </server>
+    <server>
+      <id>github-btcr</id>
+      <username>OWNER</username>
+      <password>TOKEN</password>
+    </server>
+  </servers>
+
+</settings>
