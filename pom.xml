@@ -122,12 +122,6 @@
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.bitcoinj</groupId>
-			<artifactId>bitcoinj-core</artifactId>
-			<version>0.15.2</version>
-			<scope>compile</scope>
-		</dependency>
-		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
 			<version>1.12</version>
