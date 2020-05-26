@@ -7,7 +7,7 @@ This is a [Universal Resolver](https://github.com/decentralized-identity/univers
 ## Specifications
 
 * [Decentralized Identifiers](https://w3c.github.io/did-core/)
-* [DID Method Specification](https://w3c-ccg.github.io/didm-btcr)
+* [DID Method Specification](https://w3c-ccg.github.io/didm-btcr/)
 
 
 ## Example DIDs
