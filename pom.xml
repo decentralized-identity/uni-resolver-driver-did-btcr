@@ -17,12 +17,27 @@
 		<connection>scm:git:git://github.com/decentralized-identity/uni-resolver-driver-did-btcr.git</connection>
 		<developerConnection>scm:git:git@github.com:decentralized-identity/uni-resolver-driver-did-btcr.git</developerConnection>
 	  <tag>HEAD</tag>
-  </scm>
-	<distributionManagement>
+  	</scm>
+
+	<repositories>
 		<repository>
-			<id>github-btcr</id>
-			<name>GitHub decentralized-identity uni-resolver-driver-did-btcr</name>
-			<url>https://maven.pkg.github.com/decentralized-identity/uni-resolver-driver-did-btcr</url>
+			<id>danubtech-maven-snapshots</id>
+			<url>https://repo.danubetech.com/repository/maven-snapshots/</url>
+		</repository>
+		<repository>
+			<id>danubtech-maven-releases</id>
+			<url>https://repo.danubetech.com/repository/maven-releases/</url>
+		</repository>
+	</repositories>
+
+	<distributionManagement>
+		<snapshotRepository>
+			<id>danubetech-maven-snapshots</id>
+			<url>https://repo.danubetech.com/repository/maven-snapshots/</url>
+		</snapshotRepository>
+		<repository>
+			<id>danubetech-maven-releases</id>
+			<url>https://repo.danubetech.com/repository/maven-releases/</url>
 		</repository>
 	</distributionManagement>
 
@@ -139,7 +154,7 @@
 		<dependency>
 			<groupId>info.weboftrust</groupId>
 			<artifactId>btc-tx-lookup-java</artifactId>
-			<version>0.1.0</version>
+			<version>0.1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.bitcoinj</groupId>
