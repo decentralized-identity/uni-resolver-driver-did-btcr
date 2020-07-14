@@ -3,11 +3,6 @@
 FROM universalresolver/base-alpine
 MAINTAINER Markus Sabadello <markus@danubetech.com>
 
-# build dependencies
-
-RUN cd /opt/ && git clone https://github.com/WebOfTrustInfo/btc-tx-lookup-java.git && \
-    cd /opt/btc-tx-lookup-java/ && mvn clean install -DskipTests && mvn clean
-
 # build driver-did-btcr
 
 ADD . /opt/driver-did-btcr
@@ -16,9 +11,9 @@ RUN cd /opt/driver-did-btcr && mvn clean install package -N -DskipTests
 
 # variables
 
-ENV uniresolver_driver_did_btcr_bitcoinConnection=blockcypherapi
-ENV uniresolver_driver_did_btcr_rpcUrlMainnet=http://user:pass@localhost:8332/
-ENV uniresolver_driver_did_btcr_rpcUrlTestnet=http://user:pass@localhost:18332/
+ENV uniresolver_driver_did_btcr_bitcoinConnection=btcd
+ENV uniresolver_driver_did_btcr_rpcUrlMainnet=
+ENV uniresolver_driver_did_btcr_rpcUrlTestnet="http://bitcoinrpc:cn@127.0.0.1:8334/"
 
 # done
 
