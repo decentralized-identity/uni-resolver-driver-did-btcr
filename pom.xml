@@ -6,6 +6,7 @@
     <packaging>${packaging.type}</packaging>
     <name>uni-resolver-driver-did-btcr</name>
     <version>0.1.3-SNAPSHOT</version>
+
     <parent>
         <groupId>decentralized-identity</groupId>
         <artifactId>uni-resolver</artifactId>
