@@ -1,9 +1,22 @@
 package uniresolver.driver.did.btcr;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
@@ -66,6 +79,8 @@ public class DidBtcrDriver implements Driver {
 			String env_bitcoinConnection = System.getenv("uniresolver_driver_did_btcr_bitcoinConnection");
 			String env_rpcUrlMainnet = System.getenv("uniresolver_driver_did_btcr_rpcUrlMainnet");
 			String env_rpcUrlTestnet = System.getenv("uniresolver_driver_did_btcr_rpcUrlTestnet");
+			String env_rpcCertMainnet = System.getenv("uniresolver_driver_did_btcr_rpcCertMainnet");
+			String env_rpcCertTestnet = System.getenv("uniresolver_driver_did_btcr_rpcCertTestnet");
 
 			if (env_bitcoinConnection != null)
 				properties.put("bitcoinConnection", env_bitcoinConnection);
@@ -73,6 +88,10 @@ public class DidBtcrDriver implements Driver {
 				properties.put("rpcUrlMainnet", env_rpcUrlMainnet);
 			if (env_rpcUrlTestnet != null)
 				properties.put("rpcUrlTestnet", env_rpcUrlTestnet);
+			if (env_rpcCertMainnet != null)
+				properties.put("rpcCertMainnet", env_rpcCertMainnet);
+			if (env_rpcUrlTestnet != null)
+				properties.put("rpcCertTestnet", env_rpcUrlTestnet);
 		} catch (Exception ex) {
 
 			throw new IllegalArgumentException(ex.getMessage(), ex);
@@ -132,8 +151,8 @@ public class DidBtcrDriver implements Driver {
 			// lookup txid
 
 			BitcoinConnection connection = chainAndLocationData.getChain() == Chain.MAINNET
-					? this.bitcoinConnectionMainnet
-					: this.bitcoinConnectionTestnet;
+										   ? this.bitcoinConnectionMainnet
+										   : this.bitcoinConnectionTestnet;
 
 			if (connection == null) {
 				throw new ResolutionException(
@@ -179,7 +198,7 @@ public class DidBtcrDriver implements Driver {
 
 		if (log.isInfoEnabled())
 			log.info("Retrieved BTCR data for " + methodSpecificIdentifier + " (" + chainAndTxid + " on chain "
-					+ chainAndLocationData.getChain() + "): " + btcrData);
+							 + chainAndLocationData.getChain() + "): " + btcrData);
 
 		// retrieve DID DOCUMENT CONTINUATION
 
@@ -225,13 +244,13 @@ public class DidBtcrDriver implements Driver {
 			} catch (IOException ex) {
 
 				throw new ResolutionException("Cannot retrieve DID DOCUMENT CONTINUATION for "
-						+ methodSpecificIdentifier + " from " + btcrData.getContinuationUri() + ": " + ex.getMessage(),
-						ex);
+													  + methodSpecificIdentifier + " from " + btcrData.getContinuationUri() + ": " + ex.getMessage(),
+											  ex);
 			}
 
 			if (log.isInfoEnabled())
 				log.info("Retrieved DID DOCUMENT CONTINUATION for " + methodSpecificIdentifier + " ("
-						+ btcrData.getContinuationUri() + "): " + didDocumentContinuation.toString());
+								 + btcrData.getContinuationUri() + "): " + didDocumentContinuation.toString());
 		}
 
 		// DID DOCUMENT context
@@ -261,12 +280,12 @@ public class DidBtcrDriver implements Driver {
 			String keyId = identifier + "#key-" + (keyNum++);
 
 			PublicKey publicKey = PublicKey.build(keyId, DIDDOCUMENT_PUBLICKEY_TYPES, null, null, inputScriptPubKey,
-					null);
+												  null);
 			publicKeys.add(publicKey);
 		}
 
 		PublicKey publicKey = PublicKey.build(identifier + "#satoshi", DIDDOCUMENT_PUBLICKEY_TYPES, null, null,
-				inputScriptPubKeys.get(inputScriptPubKeys.size() - 1), null);
+											  inputScriptPubKeys.get(inputScriptPubKeys.size() - 1), null);
 		publicKeys.add(publicKey);
 
 		Authentication authentication = Authentication.build(null, DIDDOCUMENT_AUTHENTICATION_TYPES, "#satoshi");
@@ -319,7 +338,7 @@ public class DidBtcrDriver implements Driver {
 			methodMetadata.put("chain", chainAndLocationData.getChain());
 		methodMetadata.put("initialBlockHeight", initialChainAndLocationData.getLocationData().getBlockHeight());
 		methodMetadata.put("initialTransactionPosition",
-				initialChainAndLocationData.getLocationData().getTransactionPosition());
+						   initialChainAndLocationData.getLocationData().getTransactionPosition());
 		methodMetadata.put("initialTxoIndex", initialChainAndLocationData.getLocationData().getTxoIndex());
 		if (initialChainAndTxid != null)
 			methodMetadata.put("initialTxid", initialChainAndTxid);
@@ -389,6 +408,8 @@ public class DidBtcrDriver implements Driver {
 
 			String prop_rpcUrlMainnet = (String) this.getProperties().get("rpcUrlMainnet");
 			String prop_rpcUrlTestnet = (String) this.getProperties().get("rpcUrlTestnet");
+			String prop_rpcCertTestnetPath = (String) this.getProperties().get("rpcCertTestnet");
+			String prop_rpcCertMainnetPath = (String) this.getProperties().get("rpcCertMainnet");
 
 			if ("bitcoind".equalsIgnoreCase(prop_bitcoinConnection)) {
 
@@ -399,10 +420,23 @@ public class DidBtcrDriver implements Driver {
 					this.bitcoinConnectionTestnet = new BitcoindRPCBitcoinConnection(prop_rpcUrlTestnet, Chain.TESTNET);
 			} else if ("btcd".equalsIgnoreCase(prop_bitcoinConnection)) {
 
-				if (prop_rpcUrlMainnet != null)
-					this.bitcoinConnectionMainnet = new BTCDRPCBitcoinConnection(prop_rpcUrlMainnet, Chain.MAINNET);
+				if (prop_rpcUrlMainnet != null) {
+					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlMainnet,
+																									 Chain.MAINNET);
+					if (prop_rpcCertMainnetPath != null) {
+						btcdrpcBitcoinConnection.getBitcoindRpcClient()
+								.setSslSocketFactory(getSslSocketFactory(new File(prop_rpcCertMainnetPath)));
+					}
+					this.bitcoinConnectionMainnet = btcdrpcBitcoinConnection;
+				}
 				if (prop_rpcUrlTestnet != null) {
-					this.bitcoinConnectionTestnet = new BTCDRPCBitcoinConnection(prop_rpcUrlTestnet, Chain.TESTNET);
+					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlTestnet,
+																									 Chain.TESTNET);
+					if (prop_rpcCertTestnetPath != null) {
+						btcdrpcBitcoinConnection.getBitcoindRpcClient()
+								.setSslSocketFactory(getSslSocketFactory(new File(prop_rpcCertTestnetPath)));
+					}
+					this.bitcoinConnectionTestnet = btcdrpcBitcoinConnection;
 				}
 			} else if ("bitcoinj".equalsIgnoreCase(prop_bitcoinConnection)) {
 
@@ -427,6 +461,36 @@ public class DidBtcrDriver implements Driver {
 	public Map<String, Object> getProperties() {
 
 		return this.properties;
+	}
+
+	private static SSLSocketFactory getSslSocketFactory(File certFile) {
+		try {
+
+			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+			FileInputStream fileInputStream = new FileInputStream(certFile);
+			Certificate certificate;
+			try {
+				certificate = certificateFactory.generateCertificate(fileInputStream);
+			} finally {
+				fileInputStream.close();
+			}
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			keyStore.load(null, null);
+			keyStore.setCertificateEntry("ca-cert", certificate);
+
+			String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
+			TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
+			tmf.init(keyStore);
+
+			SSLContext context = SSLContext.getInstance("SSL");
+			context.init(null, tmf.getTrustManagers(), null);
+			return context.getSocketFactory();
+
+		} catch (NoSuchAlgorithmException | KeyStoreException | CertificateException | KeyManagementException
+				| IOException e) {
+			log.error(e.getMessage(), e);
+		}
+		return null;
 	}
 
 	public void setProperties(Map<String, Object> properties) {
