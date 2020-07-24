@@ -90,8 +90,8 @@ public class DidBtcrDriver implements Driver {
 				properties.put("rpcUrlTestnet", env_rpcUrlTestnet);
 			if (env_rpcCertMainnet != null)
 				properties.put("rpcCertMainnet", env_rpcCertMainnet);
-			if (env_rpcUrlTestnet != null)
-				properties.put("rpcCertTestnet", env_rpcUrlTestnet);
+			if (env_rpcCertTestnet != null)
+				properties.put("rpcCertTestnet", env_rpcCertTestnet);
 		} catch (Exception ex) {
 
 			throw new IllegalArgumentException(ex.getMessage(), ex);
