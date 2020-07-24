@@ -17,8 +17,6 @@ This is a [Universal Resolver](https://github.com/decentralized-identity/univers
  did:btcr:xkrn-xz7q-qsye-28p
  did:btcr:x705-jznz-q3nl-srs
 ```
-## Configuration
- For downloading the dependencies of this project a Personal Access Token for GitHub must be configured in file [settings.xml](https://github.com/decentralized-identity/uni-resolver-driver-did-btcr/blob/master/settings.xml) according to [Creating a personal access token for the command line](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line).
 
 ## Build and Run (Docker)
 
@@ -30,7 +28,7 @@ curl -X GET http://localhost:8080/1.0/identifiers/did:btcr:xz35-jznz-q9yu-ply
 
 ## Build (native Java)
 
-	mvn --settings settings.xml clean install
+	mvn clean install
 	
 ## Driver Environment Variables
 
