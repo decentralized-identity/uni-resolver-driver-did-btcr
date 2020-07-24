@@ -57,6 +57,10 @@ public class DidBtcrDriver implements Driver {
 	private BitcoinConnection bitcoinConnectionTestnet;
 	private HttpClient httpClient = HttpClients.createDefault();
 
+	private static final String BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
+	private static final String END_CERT = "-----END CERTIFICATE-----";
+	private final static String LINE_SEPARATOR = System.getProperty("line.separator");
+
 	public DidBtcrDriver() {
 
 		this(getPropertiesFromEnvironment());
@@ -112,12 +116,11 @@ public class DidBtcrDriver implements Driver {
 			keyStore.load(null, null);
 			keyStore.setCertificateEntry("ca-cert", certificate);
 
-			String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
-			TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
-			tmf.init(keyStore);
+			TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("PKIX");
+			trustManagerFactory.init(keyStore);
 
 			SSLContext context = SSLContext.getInstance("SSL");
-			context.init(null, tmf.getTrustManagers(), null);
+			context.init(null, trustManagerFactory.getTrustManagers(), null);
 			return context.getSocketFactory();
 
 		} catch (NoSuchAlgorithmException | KeyStoreException | CertificateException | KeyManagementException
@@ -451,8 +454,15 @@ public class DidBtcrDriver implements Driver {
 					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlMainnet,
 							Chain.MAINNET);
 					if (prop_rpcCertMainnet != null) {
+						String certString;
+
+						if (prop_rpcCertMainnet.toUpperCase().contains("CERTIFICATE")) {
+							certString = prop_rpcCertTestnet;
+						} else {
+							certString = BEGIN_CERT + LINE_SEPARATOR + prop_rpcCertMainnet + LINE_SEPARATOR + END_CERT;
+						}
 						btcdrpcBitcoinConnection.getBitcoindRpcClient()
-								.setSslSocketFactory(getSslSocketFactory(prop_rpcCertMainnet));
+								.setSslSocketFactory(getSslSocketFactory(certString));
 					}
 					this.bitcoinConnectionMainnet = btcdrpcBitcoinConnection;
 				}
@@ -460,8 +470,16 @@ public class DidBtcrDriver implements Driver {
 					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlTestnet,
 							Chain.TESTNET);
 					if (prop_rpcCertTestnet != null) {
+
+						String certString;
+
+						if (prop_rpcCertTestnet.toUpperCase().contains("CERTIFICATE")) {
+							certString = prop_rpcCertTestnet;
+						} else {
+							certString = BEGIN_CERT + LINE_SEPARATOR + prop_rpcCertTestnet + LINE_SEPARATOR + END_CERT;
+						}
 						btcdrpcBitcoinConnection.getBitcoindRpcClient()
-								.setSslSocketFactory(getSslSocketFactory(prop_rpcCertTestnet));
+								.setSslSocketFactory(getSslSocketFactory(certString));
 					}
 					this.bitcoinConnectionTestnet = btcdrpcBitcoinConnection;
 				}
