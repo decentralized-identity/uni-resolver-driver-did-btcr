@@ -1,9 +1,22 @@
 package uniresolver.driver.did.btcr;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
@@ -44,6 +57,10 @@ public class DidBtcrDriver implements Driver {
 	private BitcoinConnection bitcoinConnectionTestnet;
 	private HttpClient httpClient = HttpClients.createDefault();
 
+	private static final String BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
+	private static final String END_CERT = "-----END CERTIFICATE-----";
+	private final static String LINE_SEPARATOR = System.getProperty("line.separator");
+
 	public DidBtcrDriver() {
 
 		this(getPropertiesFromEnvironment());
@@ -66,6 +83,8 @@ public class DidBtcrDriver implements Driver {
 			String env_bitcoinConnection = System.getenv("uniresolver_driver_did_btcr_bitcoinConnection");
 			String env_rpcUrlMainnet = System.getenv("uniresolver_driver_did_btcr_rpcUrlMainnet");
 			String env_rpcUrlTestnet = System.getenv("uniresolver_driver_did_btcr_rpcUrlTestnet");
+			String env_rpcCertMainnet = System.getenv("uniresolver_driver_did_btcr_rpcCertMainnet");
+			String env_rpcCertTestnet = System.getenv("uniresolver_driver_did_btcr_rpcCertTestnet");
 
 			if (env_bitcoinConnection != null)
 				properties.put("bitcoinConnection", env_bitcoinConnection);
@@ -73,12 +92,42 @@ public class DidBtcrDriver implements Driver {
 				properties.put("rpcUrlMainnet", env_rpcUrlMainnet);
 			if (env_rpcUrlTestnet != null)
 				properties.put("rpcUrlTestnet", env_rpcUrlTestnet);
+			if (env_rpcCertMainnet != null)
+				properties.put("rpcCertMainnet", env_rpcCertMainnet);
+			if (env_rpcCertTestnet != null)
+				properties.put("rpcCertTestnet", env_rpcCertTestnet);
 		} catch (Exception ex) {
 
 			throw new IllegalArgumentException(ex.getMessage(), ex);
 		}
 
 		return properties;
+	}
+
+	private static SSLSocketFactory getSslSocketFactory(String certString) {
+		try {
+
+			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+			Certificate certificate;
+			try (InputStream inputStream = new ByteArrayInputStream(certString.getBytes())) {
+				certificate = certificateFactory.generateCertificate(inputStream);
+			}
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			keyStore.load(null, null);
+			keyStore.setCertificateEntry("ca-cert", certificate);
+
+			TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("PKIX");
+			trustManagerFactory.init(keyStore);
+
+			SSLContext context = SSLContext.getInstance("SSL");
+			context.init(null, trustManagerFactory.getTrustManagers(), null);
+			return context.getSocketFactory();
+
+		} catch (NoSuchAlgorithmException | KeyStoreException | CertificateException | KeyManagementException
+				| IOException e) {
+			log.error(e.getMessage(), e);
+		}
+		return null;
 	}
 
 	public BitcoinConnection getBitcoinConnectionMainnet() {
@@ -389,6 +438,8 @@ public class DidBtcrDriver implements Driver {
 
 			String prop_rpcUrlMainnet = (String) this.getProperties().get("rpcUrlMainnet");
 			String prop_rpcUrlTestnet = (String) this.getProperties().get("rpcUrlTestnet");
+			String prop_rpcCertTestnet = (String) this.getProperties().get("rpcCertTestnet");
+			String prop_rpcCertMainnet = (String) this.getProperties().get("rpcCertMainnet");
 
 			if ("bitcoind".equalsIgnoreCase(prop_bitcoinConnection)) {
 
@@ -399,10 +450,38 @@ public class DidBtcrDriver implements Driver {
 					this.bitcoinConnectionTestnet = new BitcoindRPCBitcoinConnection(prop_rpcUrlTestnet, Chain.TESTNET);
 			} else if ("btcd".equalsIgnoreCase(prop_bitcoinConnection)) {
 
-				if (prop_rpcUrlMainnet != null)
-					this.bitcoinConnectionMainnet = new BTCDRPCBitcoinConnection(prop_rpcUrlMainnet, Chain.MAINNET);
+				if (prop_rpcUrlMainnet != null) {
+					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlMainnet,
+							Chain.MAINNET);
+					if (prop_rpcCertMainnet != null) {
+						String certString;
+
+						if (prop_rpcCertMainnet.toUpperCase().contains("CERTIFICATE")) {
+							certString = prop_rpcCertTestnet;
+						} else {
+							certString = BEGIN_CERT + LINE_SEPARATOR + prop_rpcCertMainnet + LINE_SEPARATOR + END_CERT;
+						}
+						btcdrpcBitcoinConnection.getBitcoindRpcClient()
+								.setSslSocketFactory(getSslSocketFactory(certString));
+					}
+					this.bitcoinConnectionMainnet = btcdrpcBitcoinConnection;
+				}
 				if (prop_rpcUrlTestnet != null) {
-					this.bitcoinConnectionTestnet = new BTCDRPCBitcoinConnection(prop_rpcUrlTestnet, Chain.TESTNET);
+					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlTestnet,
+							Chain.TESTNET);
+					if (prop_rpcCertTestnet != null) {
+
+						String certString;
+
+						if (prop_rpcCertTestnet.toUpperCase().contains("CERTIFICATE")) {
+							certString = prop_rpcCertTestnet;
+						} else {
+							certString = BEGIN_CERT + LINE_SEPARATOR + prop_rpcCertTestnet + LINE_SEPARATOR + END_CERT;
+						}
+						btcdrpcBitcoinConnection.getBitcoindRpcClient()
+								.setSslSocketFactory(getSslSocketFactory(certString));
+					}
+					this.bitcoinConnectionTestnet = btcdrpcBitcoinConnection;
 				}
 			} else if ("bitcoinj".equalsIgnoreCase(prop_bitcoinConnection)) {
 
