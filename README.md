@@ -54,6 +54,16 @@ The driver recognizes the following environment variables:
  * Specifies the JSON-RPC URL of a bitcoind/btcd instance running on Testnet.
  * Default value: `http://user:pass@localhost:18332/`
 
+### `uniresolver_driver_did_btcr_rpcCertMainnet`
+
+ * Specifies the server TLS certificate of the bitcoind/btcd instance running on Mainnet.
+ * Default value: ``
+
+### `uniresolver_driver_did_btcr_rpcCertTestnet`
+
+ * Specifies the server TLS certificate of the bitcoind/btcd instance running on Testnet.
+ * Default value: ``
+
 ## Driver Metadata
 
 The driver returns the following metadata in addition to a DID document:

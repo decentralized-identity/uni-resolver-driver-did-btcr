@@ -14,8 +14,9 @@ RUN cd /opt/driver-did-btcr && mvn clean install package -N -DskipTests
 
 # variables
 
-ENV uniresolver_driver_did_btcr_bitcoinConnection=btcd
-ENV uniresolver_driver_did_btcr_rpcUrlTestnet=
+ENV uniresolver_driver_did_btcr_bitcoinConnection=blockcypherapi
+ENV uniresolver_driver_did_btcr_rpcUrlMainnet=http://user:pass@localhost:8332/
+ENV uniresolver_driver_did_btcr_rpcUrlTestnet=http://user:pass@localhost:18332/
 ENV uniresolver_driver_did_btcr_rpcCertMainnet=
 ENV uniresolver_driver_did_btcr_rpcCertTestnet=
 
