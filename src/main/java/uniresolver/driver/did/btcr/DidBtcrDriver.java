@@ -3,6 +3,7 @@ package uniresolver.driver.did.btcr;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -18,6 +19,14 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
+import com.apicatalog.jsonld.json.JsonUtils;
+import com.apicatalog.jsonld.lang.Keywords;
+import foundation.identity.did.Authentication;
+import foundation.identity.did.DIDDocument;
+import foundation.identity.did.Service;
+import foundation.identity.did.VerificationMethod;
+import foundation.identity.jsonld.JsonLDObject;
+import foundation.identity.jsonld.JsonLDUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -27,10 +36,6 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.jsonldjava.core.JsonLdConsts;
-import com.github.jsonldjava.utils.JsonUtils;
-
-import did.*;
 import info.weboftrust.btctxlookup.Chain;
 import info.weboftrust.btctxlookup.ChainAndLocationData;
 import info.weboftrust.btctxlookup.ChainAndTxid;
@@ -48,7 +53,7 @@ public class DidBtcrDriver implements Driver {
 	public static final Pattern DID_BTCR_PATTERN_METHOD = Pattern.compile("^did:btcr:(.*)$");
 	public static final Pattern DID_BTCR_PATTERN_METHOD_SPECIFIC = Pattern
 			.compile("^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-(?:[a-z0-9]{3}|[a-z0-9]{4}-[a-z0-9]{2})$");
-	public static final String[] DIDDOCUMENT_PUBLICKEY_TYPES = new String[] { "EcdsaSecp256k1VerificationKey2019" };
+	public static final String[] DIDDOCUMENT_VERIFICATIONMETHOD_TYPES = new String[] { "EcdsaSecp256k1VerificationKey2019" };
 	public static final String[] DIDDOCUMENT_AUTHENTICATION_TYPES = new String[] {
 			"EcdsaSecp256k1SignatureAuthentication2019" };
 	private static final Logger log = LoggerFactory.getLogger(DidBtcrDriver.class);
@@ -247,8 +252,7 @@ public class DidBtcrDriver implements Driver {
 
 				HttpEntity httpEntity = httpResponse.getEntity();
 
-				Map<String, Object> jsonLdObject = (Map<String, Object>) JsonUtils
-						.fromString(EntityUtils.toString(httpEntity));
+				Map<String, Object> jsonLdObject = (Map<String, Object>) JsonLDObject.fromJson(EntityUtils.toString(httpEntity)).getJsonObject();
 
 				final boolean emptyOrNull = !jsonLdObject.containsKey("didDocument")
 						|| jsonLdObject.get("didDocument") == null
@@ -258,17 +262,17 @@ public class DidBtcrDriver implements Driver {
 					Map<String, Object> outerJsonLdObject = jsonLdObject;
 					jsonLdObject = (Map<String, Object>) outerJsonLdObject.get("didDocument");
 
-					if ((!jsonLdObject.containsKey(JsonLdConsts.CONTEXT))
-							&& outerJsonLdObject.containsKey(JsonLdConsts.CONTEXT)) {
+					if ((!jsonLdObject.containsKey(Keywords.CONTEXT))
+							&& outerJsonLdObject.containsKey(Keywords.CONTEXT)) {
 
-						jsonLdObject.put(JsonLdConsts.CONTEXT, outerJsonLdObject.get(JsonLdConsts.CONTEXT));
+						jsonLdObject.put(Keywords.CONTEXT, outerJsonLdObject.get(Keywords.CONTEXT));
 					}
 				}
 
 				if (!emptyOrNull) {
-					didDocumentContinuation = DIDDocument.build(jsonLdObject);
+					didDocumentContinuation = DIDDocument.fromJsonObject(jsonLdObject);
 				} else {
-					didDocumentContinuation = DIDDocument.build(identifier, null, null, null);
+					didDocumentContinuation = DIDDocument.builder().id(URI.create(identifier)).build();
 				}
 				EntityUtils.consume(httpEntity);
 			} catch (IOException ex) {
@@ -283,18 +287,18 @@ public class DidBtcrDriver implements Driver {
 						+ btcrData.getContinuationUri() + "): " + didDocumentContinuation.toString());
 		}
 
-		// DID DOCUMENT context
+		// DID DOCUMENT contexts
 
-		Object context = null;
+		List<URI> contexts = null;
 
 		if (didDocumentContinuation != null) {
 
-			context = didDocumentContinuation.getContexts();
+			contexts = didDocumentContinuation.getContexts();
 		}
 
-		// DID DOCUMENT publicKeys
+		// DID DOCUMENT verificationMethods
 
-		List<PublicKey> publicKeys = new ArrayList<>();
+		List<VerificationMethod> verificationMethods = new ArrayList<>();
 		List<Authentication> authentications = new ArrayList<>();
 
 		List<String> inputScriptPubKeys = new ArrayList<>();
@@ -309,33 +313,43 @@ public class DidBtcrDriver implements Driver {
 
 			String keyId = identifier + "#key-" + (keyNum++);
 
-			PublicKey publicKey = PublicKey.build(keyId, DIDDOCUMENT_PUBLICKEY_TYPES, null, null, inputScriptPubKey,
-					null);
-			publicKeys.add(publicKey);
+			VerificationMethod verificationMethod = VerificationMethod.builder()
+					.id(URI.create(keyId))
+					.types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
+					.publicKeyBase58(inputScriptPubKey)
+					.build();
+			verificationMethods.add(verificationMethod);
 		}
 
-		PublicKey publicKey = PublicKey.build(identifier + "#satoshi", DIDDOCUMENT_PUBLICKEY_TYPES, null, null,
-				inputScriptPubKeys.get(inputScriptPubKeys.size() - 1), null);
-		publicKeys.add(publicKey);
+		VerificationMethod verificationMethod = VerificationMethod
+				.builder()
+				.id(URI.create(identifier + "#satoshi"))
+				.types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
+				.publicKeyBase58(inputScriptPubKeys.get(inputScriptPubKeys.size() - 1))
+				.build();
+		verificationMethods.add(verificationMethod);
 
-		Authentication authentication = Authentication.build(null, DIDDOCUMENT_AUTHENTICATION_TYPES, "#satoshi");
+		Authentication authentication = Authentication.builder()
+				.types(Arrays.asList(DIDDOCUMENT_AUTHENTICATION_TYPES))
+				.verificationMethod(URI.create("#satoshi"))
+				.build();
 		authentications.add(authentication);
 
 		if (didDocumentContinuation != null) {
 
-			if (didDocumentContinuation.getPublicKeys() != null)
-				for (PublicKey didDocumentContinuationPublicKey : didDocumentContinuation.getPublicKeys()) {
+			if (didDocumentContinuation.getVerificationMethods() != null)
+				for (VerificationMethod didDocumentContinuationVerificationMethod : didDocumentContinuation.getVerificationMethods()) {
 
-					if (containsById(publicKeys, didDocumentContinuationPublicKey))
+					if (containsById(verificationMethods, didDocumentContinuationVerificationMethod))
 						continue;
-					publicKeys.add(didDocumentContinuationPublicKey);
+					verificationMethods.add(didDocumentContinuationVerificationMethod);
 				}
 
 			if (didDocumentContinuation.getAuthentications() != null)
 				for (Authentication didDocumentContinuationAuthentication : didDocumentContinuation
 						.getAuthentications()) {
 
-					if (containsById(publicKeys, didDocumentContinuationAuthentication))
+					if (containsById(verificationMethods, didDocumentContinuationAuthentication))
 						continue;
 					authentications.add(didDocumentContinuationAuthentication);
 				}
@@ -355,7 +369,13 @@ public class DidBtcrDriver implements Driver {
 
 		// create DID DOCUMENT
 
-		DIDDocument didDocument = DIDDocument.build(context, identifier, publicKeys, authentications, services);
+		DIDDocument didDocument = DIDDocument.builder()
+				.contexts(contexts)
+				.id(URI.create(identifier))
+				.verificationMethods(verificationMethods)
+				.authentications(authentications)
+				.services(services)
+				.build();
 
 		// create METHOD METADATA
 
@@ -387,7 +407,7 @@ public class DidBtcrDriver implements Driver {
 
 		// done
 
-		return ResolveResult.build(didDocument, null, DIDDocument.MIME_TYPE, null, methodMetadata);
+		return ResolveResult.build(didDocument, null, DIDDocument.MIME_TYPE_JSON_LD, null, methodMetadata);
 	}
 
 	@Override
@@ -401,9 +421,9 @@ public class DidBtcrDriver implements Driver {
 		return this.httpClient;
 	}
 
-	public boolean containsById(List<? extends JsonLdObject> jsonLdObjectList, JsonLdObject containsJsonLdObject) {
+	public boolean containsById(List<? extends JsonLDObject> jsonLdObjectList, JsonLDObject containsJsonLdObject) {
 
-		for (JsonLdObject jsonLdObject : jsonLdObjectList) {
+		for (JsonLDObject jsonLdObject : jsonLdObjectList) {
 
 			if (jsonLdObject.getId() != null && jsonLdObject.getId().equals(containsJsonLdObject.getId()))
 				return true;
