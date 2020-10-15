@@ -1,9 +1,38 @@
 package uniresolver.driver.did.btcr;
 
+import com.apicatalog.jsonld.lang.Keywords;
+import foundation.identity.did.Authentication;
+import foundation.identity.did.DIDDocument;
+import foundation.identity.did.Service;
+import foundation.identity.did.VerificationMethod;
+import foundation.identity.jsonld.JsonLDObject;
+import info.weboftrust.btctxlookup.Chain;
+import info.weboftrust.btctxlookup.ChainAndLocationData;
+import info.weboftrust.btctxlookup.ChainAndTxid;
+import info.weboftrust.btctxlookup.DidBtcrData;
+import info.weboftrust.btctxlookup.bitcoinconnection.BTCDRPCBitcoinConnection;
+import info.weboftrust.btctxlookup.bitcoinconnection.BitcoinConnection;
+import info.weboftrust.btctxlookup.bitcoinconnection.BitcoindRPCBitcoinConnection;
+import info.weboftrust.btctxlookup.bitcoinconnection.BlockcypherAPIBitcoinConnection;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import uniresolver.ResolutionException;
+import uniresolver.driver.Driver;
+import uniresolver.result.ResolveResult;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -15,56 +44,19 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManagerFactory;
-
-import com.apicatalog.jsonld.json.JsonUtils;
-import com.apicatalog.jsonld.lang.Keywords;
-import foundation.identity.did.Authentication;
-import foundation.identity.did.DIDDocument;
-import foundation.identity.did.Service;
-import foundation.identity.did.VerificationMethod;
-import foundation.identity.jsonld.JsonLDObject;
-import foundation.identity.jsonld.JsonLDUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import info.weboftrust.btctxlookup.Chain;
-import info.weboftrust.btctxlookup.ChainAndLocationData;
-import info.weboftrust.btctxlookup.ChainAndTxid;
-import info.weboftrust.btctxlookup.DidBtcrData;
-import info.weboftrust.btctxlookup.bitcoinconnection.BTCDRPCBitcoinConnection;
-import info.weboftrust.btctxlookup.bitcoinconnection.BitcoinConnection;
-import info.weboftrust.btctxlookup.bitcoinconnection.BitcoindRPCBitcoinConnection;
-import info.weboftrust.btctxlookup.bitcoinconnection.BlockcypherAPIBitcoinConnection;
-import uniresolver.ResolutionException;
-import uniresolver.driver.Driver;
-import uniresolver.result.ResolveResult;
-
 public class DidBtcrDriver implements Driver {
 
 	public static final Pattern DID_BTCR_PATTERN_METHOD = Pattern.compile("^did:btcr:(.*)$");
 	public static final Pattern DID_BTCR_PATTERN_METHOD_SPECIFIC = Pattern
 			.compile("^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-(?:[a-z0-9]{3}|[a-z0-9]{4}-[a-z0-9]{2})$");
-	public static final String[] DIDDOCUMENT_VERIFICATIONMETHOD_TYPES = new String[] { "EcdsaSecp256k1VerificationKey2019" };
-	public static final String[] DIDDOCUMENT_AUTHENTICATION_TYPES = new String[] {
-			"EcdsaSecp256k1SignatureAuthentication2019" };
+	public static final String[] DIDDOCUMENT_VERIFICATIONMETHOD_TYPES = new String[]{"EcdsaSecp256k1VerificationKey2019"};
+	public static final String[] DIDDOCUMENT_AUTHENTICATION_TYPES = new String[]{
+			"EcdsaSecp256k1SignatureAuthentication2019"};
 	private static final Logger log = LoggerFactory.getLogger(DidBtcrDriver.class);
 	private Map<String, Object> properties;
 	private BitcoinConnection bitcoinConnectionMainnet;
 	private BitcoinConnection bitcoinConnectionTestnet;
 	private HttpClient httpClient = HttpClients.createDefault();
-
-	private static final String BEGIN_CERT = "-----BEGIN CERTIFICATE-----";
-	private static final String END_CERT = "-----END CERTIFICATE-----";
-	private final static String LINE_SEPARATOR = System.getProperty("line.separator");
 
 	public DidBtcrDriver() {
 
@@ -107,32 +99,6 @@ public class DidBtcrDriver implements Driver {
 		}
 
 		return properties;
-	}
-
-	private static SSLSocketFactory getSslSocketFactory(String certString) {
-		try {
-
-			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-			Certificate certificate;
-			try (InputStream inputStream = new ByteArrayInputStream(certString.getBytes())) {
-				certificate = certificateFactory.generateCertificate(inputStream);
-			}
-			KeyStore keyStore = KeyStore.getInstance("JKS");
-			keyStore.load(null, null);
-			keyStore.setCertificateEntry("ca-cert", certificate);
-
-			TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("PKIX");
-			trustManagerFactory.init(keyStore);
-
-			SSLContext context = SSLContext.getInstance("SSL");
-			context.init(null, trustManagerFactory.getTrustManagers(), null);
-			return context.getSocketFactory();
-
-		} catch (NoSuchAlgorithmException | KeyStoreException | CertificateException | KeyManagementException
-				| IOException e) {
-			log.error(e.getMessage(), e);
-		}
-		return null;
 	}
 
 	public BitcoinConnection getBitcoinConnectionMainnet() {
@@ -186,8 +152,8 @@ public class DidBtcrDriver implements Driver {
 			// lookup txid
 
 			BitcoinConnection connection = chainAndLocationData.getChain() == Chain.MAINNET
-					? this.bitcoinConnectionMainnet
-					: this.bitcoinConnectionTestnet;
+			                               ? this.bitcoinConnectionMainnet
+			                               : this.bitcoinConnectionTestnet;
 
 			if (connection == null) {
 				throw new ResolutionException(
@@ -212,7 +178,8 @@ public class DidBtcrDriver implements Driver {
 				if (btcrData.getSpentInChainAndTxid() == null) {
 
 					break;
-				} else {
+				}
+				else {
 
 					spentInChainAndTxids.add(btcrData);
 					chainAndTxid = btcrData.getSpentInChainAndTxid();
@@ -233,7 +200,7 @@ public class DidBtcrDriver implements Driver {
 
 		if (log.isInfoEnabled())
 			log.info("Retrieved BTCR data for " + methodSpecificIdentifier + " (" + chainAndTxid + " on chain "
-					+ chainAndLocationData.getChain() + "): " + btcrData);
+					         + chainAndLocationData.getChain() + "): " + btcrData);
 
 		// retrieve DID DOCUMENT CONTINUATION
 
@@ -271,20 +238,21 @@ public class DidBtcrDriver implements Driver {
 
 				if (!emptyOrNull) {
 					didDocumentContinuation = DIDDocument.fromJsonObject(jsonLdObject);
-				} else {
+				}
+				else {
 					didDocumentContinuation = DIDDocument.builder().id(URI.create(identifier)).build();
 				}
 				EntityUtils.consume(httpEntity);
 			} catch (IOException ex) {
 
 				throw new ResolutionException("Cannot retrieve DID DOCUMENT CONTINUATION for "
-						+ methodSpecificIdentifier + " from " + btcrData.getContinuationUri() + ": " + ex.getMessage(),
-						ex);
+						                              + methodSpecificIdentifier + " from " + btcrData.getContinuationUri() + ": " + ex.getMessage(),
+				                              ex);
 			}
 
 			if (log.isInfoEnabled())
 				log.info("Retrieved DID DOCUMENT CONTINUATION for " + methodSpecificIdentifier + " ("
-						+ btcrData.getContinuationUri() + "): " + didDocumentContinuation.toString());
+						         + btcrData.getContinuationUri() + "): " + didDocumentContinuation.toString());
 		}
 
 		// DID DOCUMENT contexts
@@ -314,10 +282,10 @@ public class DidBtcrDriver implements Driver {
 			String keyId = identifier + "#key-" + (keyNum++);
 
 			VerificationMethod verificationMethod = VerificationMethod.builder()
-					.id(URI.create(keyId))
-					.types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
-					.publicKeyBase58(inputScriptPubKey)
-					.build();
+			                                                          .id(URI.create(keyId))
+			                                                          .types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
+			                                                          .publicKeyBase58(inputScriptPubKey)
+			                                                          .build();
 			verificationMethods.add(verificationMethod);
 		}
 
@@ -330,9 +298,9 @@ public class DidBtcrDriver implements Driver {
 		verificationMethods.add(verificationMethod);
 
 		Authentication authentication = Authentication.builder()
-				.types(Arrays.asList(DIDDOCUMENT_AUTHENTICATION_TYPES))
-				.verificationMethod(URI.create("#satoshi"))
-				.build();
+		                                              .types(Arrays.asList(DIDDOCUMENT_AUTHENTICATION_TYPES))
+		                                              .verificationMethod(URI.create("#satoshi"))
+		                                              .build();
 		authentications.add(authentication);
 
 		if (didDocumentContinuation != null) {
@@ -362,7 +330,8 @@ public class DidBtcrDriver implements Driver {
 		if (didDocumentContinuation != null) {
 
 			services = didDocumentContinuation.getServices();
-		} else {
+		}
+		else {
 
 			services = Collections.emptyList();
 		}
@@ -370,12 +339,12 @@ public class DidBtcrDriver implements Driver {
 		// create DID DOCUMENT
 
 		DIDDocument didDocument = DIDDocument.builder()
-				.contexts(contexts)
-				.id(URI.create(identifier))
-				.verificationMethods(verificationMethods)
-				.authentications(authentications)
-				.services(services)
-				.build();
+		                                     .contexts(contexts)
+		                                     .id(URI.create(identifier))
+		                                     .verificationMethods(verificationMethods)
+		                                     .authentications(authentications)
+		                                     .services(services)
+		                                     .build();
 
 		// create METHOD METADATA
 
@@ -388,7 +357,7 @@ public class DidBtcrDriver implements Driver {
 			methodMetadata.put("chain", chainAndLocationData.getChain());
 		methodMetadata.put("initialBlockHeight", initialChainAndLocationData.getLocationData().getBlockHeight());
 		methodMetadata.put("initialTransactionPosition",
-				initialChainAndLocationData.getLocationData().getTransactionPosition());
+		                   initialChainAndLocationData.getLocationData().getTransactionPosition());
 		methodMetadata.put("initialTxoIndex", initialChainAndLocationData.getLocationData().getTxoIndex());
 		if (initialChainAndTxid != null)
 			methodMetadata.put("initialTxid", initialChainAndTxid);
@@ -437,6 +406,34 @@ public class DidBtcrDriver implements Driver {
 		this.httpClient = httpClient;
 	}
 
+	private static SSLSocketFactory getSslSocketFactory(String certString) {
+		try {
+
+			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
+
+			byte[] decoded = Base64.getDecoder().decode(certString.trim().getBytes(StandardCharsets.UTF_8));
+
+			Certificate certificate = certificateFactory.generateCertificate(new ByteArrayInputStream(decoded));
+
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			keyStore.load(null, null);
+			keyStore.setCertificateEntry("ca-cert", certificate);
+
+			TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			trustManagerFactory.init(keyStore);
+
+			SSLContext context = SSLContext.getInstance("SSL");
+			context.init(null, trustManagerFactory.getTrustManagers(), null);
+			return context.getSocketFactory();
+
+		} catch (NoSuchAlgorithmException | KeyStoreException | CertificateException | KeyManagementException
+				| IOException e) {
+			log.error(e.getMessage(), e);
+		}
+		return null;
+	}
+
+
 	public void setBitcoinConnectionMainnet(BitcoinConnection bitcoinConnectionMainnet) {
 		this.bitcoinConnectionMainnet = bitcoinConnectionMainnet;
 	}
@@ -463,54 +460,44 @@ public class DidBtcrDriver implements Driver {
 
 			if ("bitcoind".equalsIgnoreCase(prop_bitcoinConnection)) {
 
-				if (prop_rpcUrlMainnet != null) {
+				if (prop_rpcUrlMainnet != null && !prop_rpcUrlMainnet.isBlank()) {
 					this.bitcoinConnectionMainnet = new BitcoindRPCBitcoinConnection(prop_rpcUrlMainnet, Chain.MAINNET);
 				}
-				if (prop_rpcUrlTestnet != null)
+				if (prop_rpcUrlTestnet != null && !prop_rpcUrlTestnet.isBlank())
 					this.bitcoinConnectionTestnet = new BitcoindRPCBitcoinConnection(prop_rpcUrlTestnet, Chain.TESTNET);
-			} else if ("btcd".equalsIgnoreCase(prop_bitcoinConnection)) {
+			}
+			else if ("btcd".equalsIgnoreCase(prop_bitcoinConnection)) {
 
-				if (prop_rpcUrlMainnet != null) {
+				if (prop_rpcUrlMainnet != null && !prop_rpcUrlMainnet.isBlank()) {
 					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlMainnet,
-							Chain.MAINNET);
-					if (prop_rpcCertMainnet != null) {
-						String certString;
+					                                                                                 Chain.MAINNET);
+					if (prop_rpcCertMainnet != null && !prop_rpcCertMainnet.isBlank()) {
 
-						if (prop_rpcCertMainnet.toUpperCase().contains("CERTIFICATE")) {
-							certString = prop_rpcCertTestnet;
-						} else {
-							certString = BEGIN_CERT + LINE_SEPARATOR + prop_rpcCertMainnet + LINE_SEPARATOR + END_CERT;
-						}
 						btcdrpcBitcoinConnection.getBitcoindRpcClient()
-								.setSslSocketFactory(getSslSocketFactory(certString));
+						                        .setSslSocketFactory(getSslSocketFactory(prop_rpcCertMainnet));
 					}
 					this.bitcoinConnectionMainnet = btcdrpcBitcoinConnection;
 				}
-				if (prop_rpcUrlTestnet != null) {
+				if (prop_rpcUrlTestnet != null && !prop_rpcUrlTestnet.isBlank()) {
 					BTCDRPCBitcoinConnection btcdrpcBitcoinConnection = new BTCDRPCBitcoinConnection(prop_rpcUrlTestnet,
-							Chain.TESTNET);
-					if (prop_rpcCertTestnet != null) {
-
-						String certString;
-
-						if (prop_rpcCertTestnet.toUpperCase().contains("CERTIFICATE")) {
-							certString = prop_rpcCertTestnet;
-						} else {
-							certString = BEGIN_CERT + LINE_SEPARATOR + prop_rpcCertTestnet + LINE_SEPARATOR + END_CERT;
-						}
+					                                                                                 Chain.TESTNET);
+					if (prop_rpcCertTestnet != null && !prop_rpcCertTestnet.isBlank()) {
 						btcdrpcBitcoinConnection.getBitcoindRpcClient()
-								.setSslSocketFactory(getSslSocketFactory(certString));
+						                        .setSslSocketFactory(getSslSocketFactory(prop_rpcCertTestnet));
 					}
 					this.bitcoinConnectionTestnet = btcdrpcBitcoinConnection;
 				}
-			} else if ("bitcoinj".equalsIgnoreCase(prop_bitcoinConnection)) {
+			}
+			else if ("bitcoinj".equalsIgnoreCase(prop_bitcoinConnection)) {
 
 				throw new RuntimeException("bitcoinj is not implemented yet");
-			} else if ("blockcypherapi".equalsIgnoreCase(prop_bitcoinConnection)) {
+			}
+			else if ("blockcypherapi".equalsIgnoreCase(prop_bitcoinConnection)) {
 
 				this.setBitcoinConnectionMainnet(new BlockcypherAPIBitcoinConnection());
 				this.setBitcoinConnectionTestnet(new BlockcypherAPIBitcoinConnection());
-			} else {
+			}
+			else {
 
 				throw new IllegalArgumentException("Invalid bitcoinConnection: " + prop_bitcoinConnection);
 			}
