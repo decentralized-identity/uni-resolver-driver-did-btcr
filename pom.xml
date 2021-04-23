@@ -23,7 +23,7 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<java.version>11</java.version>
-
+		<google.guava.version>30.1.1-jre</google.guava.version>
 		<btc-tx-lookup-java.version>0.2-SNAPSHOT</btc-tx-lookup-java.version>
 		<bitcoinj-core.version>0.15.8</bitcoinj-core.version>
 	</properties>
