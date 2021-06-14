@@ -1,7 +1,7 @@
 package uniresolver.driver.did.btcr;
 
 import com.apicatalog.jsonld.lang.Keywords;
-import foundation.identity.did.Authentication;
+import foundation.identity.did.DID;
 import foundation.identity.did.DIDDocument;
 import foundation.identity.did.Service;
 import foundation.identity.did.VerificationMethod;
@@ -110,11 +110,11 @@ public class DidBtcrDriver implements Driver {
 	}
 
 	@Override
-	public ResolveResult resolve(String identifier) throws ResolutionException {
+	public ResolveResult resolve(DID did, Map<String, Object> resolveOptions) throws ResolutionException {
 
 		// parse identifier
 
-		Matcher matcher = DID_BTCR_PATTERN_METHOD.matcher(identifier);
+		Matcher matcher = DID_BTCR_PATTERN_METHOD.matcher(did.getDidString());
 		if (!matcher.matches())
 			return null;
 
@@ -240,7 +240,7 @@ public class DidBtcrDriver implements Driver {
 					didDocumentContinuation = DIDDocument.fromJsonObject(jsonLdObject);
 				}
 				else {
-					didDocumentContinuation = DIDDocument.builder().id(URI.create(identifier)).build();
+					didDocumentContinuation = DIDDocument.builder().id(did.toUri()).build();
 				}
 				EntityUtils.consume(httpEntity);
 			} catch (IOException ex) {
@@ -267,7 +267,7 @@ public class DidBtcrDriver implements Driver {
 		// DID DOCUMENT verificationMethods
 
 		List<VerificationMethod> verificationMethods = new ArrayList<>();
-		List<Authentication> authentications = new ArrayList<>();
+		List<VerificationMethod> authenticationVerificationMethods = new ArrayList<>();
 
 		List<String> inputScriptPubKeys = new ArrayList<>();
 
@@ -279,7 +279,7 @@ public class DidBtcrDriver implements Driver {
 
 		for (String inputScriptPubKey : inputScriptPubKeys) {
 
-			String keyId = identifier + "#key-" + (keyNum++);
+			String keyId = did + "#key-" + (keyNum++);
 
 			VerificationMethod verificationMethod = VerificationMethod.builder()
 			                                                          .id(URI.create(keyId))
@@ -291,17 +291,17 @@ public class DidBtcrDriver implements Driver {
 
 		VerificationMethod verificationMethod = VerificationMethod
 				.builder()
-				.id(URI.create(identifier + "#satoshi"))
+				.id(URI.create(did + "#satoshi"))
 				.types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
 				.publicKeyBase58(inputScriptPubKeys.get(inputScriptPubKeys.size() - 1))
 				.build();
 		verificationMethods.add(verificationMethod);
 
-		Authentication authentication = Authentication.builder()
+		VerificationMethod authentication = VerificationMethod.builder()
 		                                              .types(Arrays.asList(DIDDOCUMENT_AUTHENTICATION_TYPES))
-		                                              .verificationMethod(URI.create("#satoshi"))
+		                                              .id(URI.create("#satoshi"))
 		                                              .build();
-		authentications.add(authentication);
+		authenticationVerificationMethods.add(authentication);
 
 		if (didDocumentContinuation != null) {
 
@@ -313,13 +313,13 @@ public class DidBtcrDriver implements Driver {
 					verificationMethods.add(didDocumentContinuationVerificationMethod);
 				}
 
-			if (didDocumentContinuation.getAuthentications() != null)
-				for (Authentication didDocumentContinuationAuthentication : didDocumentContinuation
-						.getAuthentications()) {
+			if (didDocumentContinuation.getAuthenticationVerificationMethods() != null)
+				for (VerificationMethod didDocumentContinuationAuthentication : didDocumentContinuation
+						.getAuthenticationVerificationMethods()) {
 
 					if (containsById(verificationMethods, didDocumentContinuationAuthentication))
 						continue;
-					authentications.add(didDocumentContinuationAuthentication);
+					authenticationVerificationMethods.add(didDocumentContinuationAuthentication);
 				}
 		}
 
@@ -340,43 +340,41 @@ public class DidBtcrDriver implements Driver {
 
 		DIDDocument didDocument = DIDDocument.builder()
 		                                     .contexts(contexts)
-		                                     .id(URI.create(identifier))
+		                                     .id(did.toUri())
 		                                     .verificationMethods(verificationMethods)
-		                                     .authentications(authentications)
+		                                     .authenticationVerificationMethods(authenticationVerificationMethods)
 		                                     .services(services)
 		                                     .build();
 
 		// create METHOD METADATA
 
-		Map<String, Object> methodMetadata = new LinkedHashMap<>();
-		methodMetadata.put("inputScriptPubKey", btcrData.getInputScriptPubKey());
-		methodMetadata.put("continuationUri", btcrData.getContinuationUri());
+		Map<String, Object> didDocumentMetadata = new LinkedHashMap<>();
+		didDocumentMetadata.put("inputScriptPubKey", btcrData.getInputScriptPubKey());
+		didDocumentMetadata.put("continuationUri", btcrData.getContinuationUri());
 		if (didDocumentContinuation != null)
-			methodMetadata.put("continuation", didDocumentContinuation);
+			didDocumentMetadata.put("continuation", didDocumentContinuation);
 		if (chainAndLocationData != null)
-			methodMetadata.put("chain", chainAndLocationData.getChain());
-		methodMetadata.put("initialBlockHeight", initialChainAndLocationData.getLocationData().getBlockHeight());
-		methodMetadata.put("initialTransactionPosition",
+			didDocumentMetadata.put("chain", chainAndLocationData.getChain());
+		didDocumentMetadata.put("initialBlockHeight", initialChainAndLocationData.getLocationData().getBlockHeight());
+		didDocumentMetadata.put("initialTransactionPosition",
 		                   initialChainAndLocationData.getLocationData().getTransactionPosition());
-		methodMetadata.put("initialTxoIndex", initialChainAndLocationData.getLocationData().getTxoIndex());
+		didDocumentMetadata.put("initialTxoIndex", initialChainAndLocationData.getLocationData().getTxoIndex());
 		if (initialChainAndTxid != null)
-			methodMetadata.put("initialTxid", initialChainAndTxid);
+			didDocumentMetadata.put("initialTxid", initialChainAndTxid);
 		if (chainAndLocationData != null)
-			methodMetadata.put("blockHeight", chainAndLocationData.getLocationData().getBlockHeight());
+			didDocumentMetadata.put("blockHeight", chainAndLocationData.getLocationData().getBlockHeight());
 		if (chainAndLocationData != null)
-			methodMetadata.put("transactionPosition", chainAndLocationData.getLocationData().getTransactionPosition());
+			didDocumentMetadata.put("transactionPosition", chainAndLocationData.getLocationData().getTransactionPosition());
 		if (chainAndLocationData != null)
-			methodMetadata.put("txoIndex", chainAndLocationData.getLocationData().getTxoIndex());
+			didDocumentMetadata.put("txoIndex", chainAndLocationData.getLocationData().getTxoIndex());
 		if (chainAndTxid != null)
-			methodMetadata.put("txid", chainAndTxid);
-		methodMetadata.put("spentInChainAndTxids", spentInChainAndTxids);
-		methodMetadata.put("deactivated", btcrData.isDeactivated());
-
-		// create RESOLVE RESULT
+			didDocumentMetadata.put("txid", chainAndTxid);
+		didDocumentMetadata.put("spentInChainAndTxids", spentInChainAndTxids);
+		didDocumentMetadata.put("deactivated", btcrData.isDeactivated());
 
 		// done
 
-		return ResolveResult.build(didDocument, null, DIDDocument.MIME_TYPE_JSON_LD, null, methodMetadata);
+		return ResolveResult.build(null, didDocument, null, didDocumentMetadata);
 	}
 
 	@Override
