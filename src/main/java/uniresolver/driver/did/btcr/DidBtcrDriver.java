@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uniresolver.ResolutionException;
 import uniresolver.driver.Driver;
+import uniresolver.result.ResolveDataModelResult;
 import uniresolver.result.ResolveResult;
 
 import javax.net.ssl.SSLContext;
@@ -110,7 +111,7 @@ public class DidBtcrDriver implements Driver {
 	}
 
 	@Override
-	public ResolveResult resolve(DID did, Map<String, Object> resolveOptions) throws ResolutionException {
+	public ResolveDataModelResult resolve(DID did, Map<String, Object> resolveOptions) throws ResolutionException {
 
 		// parse identifier
 
@@ -374,7 +375,7 @@ public class DidBtcrDriver implements Driver {
 
 		// done
 
-		return ResolveResult.build(null, didDocument, null, didDocumentMetadata);
+		return ResolveDataModelResult.build(null, didDocument, didDocumentMetadata);
 	}
 
 	@Override
