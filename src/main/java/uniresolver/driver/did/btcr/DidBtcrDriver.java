@@ -14,6 +14,7 @@ import info.weboftrust.btctxlookup.bitcoinconnection.BTCDRPCBitcoinConnection;
 import info.weboftrust.btctxlookup.bitcoinconnection.BitcoinConnection;
 import info.weboftrust.btctxlookup.bitcoinconnection.BitcoindRPCBitcoinConnection;
 import info.weboftrust.btctxlookup.bitcoinconnection.BlockcypherAPIBitcoinConnection;
+import io.leonard.Base58;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -44,6 +45,8 @@ import java.security.cert.CertificateFactory;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static org.bitcoinj.core.Utils.HEX;
 
 public class DidBtcrDriver implements Driver {
 
@@ -285,7 +288,7 @@ public class DidBtcrDriver implements Driver {
 			VerificationMethod verificationMethod = VerificationMethod.builder()
 			                                                          .id(URI.create(keyId))
 			                                                          .types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
-			                                                          .publicKeyBase58(inputScriptPubKey)
+			                                                          .publicKeyBase58(Base58.encode(HEX.decode(inputScriptPubKey)))
 			                                                          .build();
 			verificationMethods.add(verificationMethod);
 		}
@@ -294,7 +297,7 @@ public class DidBtcrDriver implements Driver {
 				.builder()
 				.id(URI.create(did + "#satoshi"))
 				.types(Arrays.asList(DIDDOCUMENT_VERIFICATIONMETHOD_TYPES))
-				.publicKeyBase58(inputScriptPubKeys.get(inputScriptPubKeys.size() - 1))
+				.publicKeyBase58(Base58.encode(HEX.decode(inputScriptPubKeys.get(inputScriptPubKeys.size() - 1))))
 				.build();
 		verificationMethods.add(verificationMethod);
 
